@@ -6,8 +6,9 @@ from collections import defaultdict
 import random
 import math
 
-# FILE="shapes.png"
+#FILE="shapes.png"
 FILE="qIrIf0G.png"
+MIN_DIST=5
 im = Image.open(FILE)
 
 def shape_separate(image):
@@ -191,6 +192,8 @@ if __name__ == "__main__":
 
 
     pixels = im.load()
+    bbox = im.getbbox()
+
     for shape_index in shape_list:
         shape = shape_list[shape_index]
         shape.sort(key=lambda px_data: flood_map[px_data[0]])
@@ -206,6 +209,18 @@ if __name__ == "__main__":
         color_arr = [0, 0, 0]
         color_arr[color_idx] = shape_color
 
+        is_bg = False
+
+        for px in shape:
+            pos = px[0]
+            if pos[0] == bbox[0] or pos[1] == bbox[2]:
+                is_bg = True
+            elif pos[1] == bbox[1] or pos[1] == bbox[3]:
+                is_bg = True
+
+        if is_bg:
+            continue
+
         for px in reversed(shape):
             pos = px[0]
             px_depth = flood_map[pos]
@@ -219,6 +234,9 @@ if __name__ == "__main__":
             bot_depth = flood_map[(x, y+1)]
 
             if not left_depth or not right_depth or not top_depth or not bot_depth:
+                continue
+
+            if px_depth < MIN_DIST:
                 continue
 
             if abs(left_depth - right_depth) == 0 and abs(top_depth - bot_depth) == 0:
