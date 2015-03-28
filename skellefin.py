@@ -6,8 +6,8 @@ from collections import defaultdict
 import random
 import math
 
-FILE="shapes.png"
-#FILE="qIrIf0G.png"
+# FILE="shapes.png"
+FILE="qIrIf0G.png"
 im = Image.open(FILE)
 
 def shape_separate(image):
@@ -196,6 +196,10 @@ if __name__ == "__main__":
         shape.sort(key=lambda px_data: flood_map[px_data[0]])
         max_val = shape[-1]
         max_depth = flood_map[max_val[0]]
+
+        shape_color = pixels[max_val[0]]
+        if shape_color[0] == 0 and shape_color[1] == 0 and shape_color[2] == 0:
+            continue
 
         shape_color = random.randint(0, 256)
         color_idx = random.randint(0, 2)
