@@ -6,8 +6,8 @@ from collections import defaultdict
 import random
 import math
 
-#FILE="shapes.png"
-FILE="qIrIf0G.png"
+FILE="shapes.png"
+#FILE="qIrIf0G.png"
 MIN_DIST=5
 im = Image.open(FILE)
 
@@ -80,7 +80,7 @@ def shape_separate(image):
 
 
 
-def flood_fill(image):
+def grassfire_fill(image):
     to_visit = []
     visited = defaultdict(int)
 
@@ -171,10 +171,7 @@ def flood_fill(image):
 
     return visited
 
-if __name__ == "__main__":
-    shape_map = shape_separate(im.copy())
-    flood_map = flood_fill(im.copy())
-
+def find_ridges(im):
     shape_list = defaultdict(list)
 
     width, height = im.size
@@ -194,17 +191,19 @@ if __name__ == "__main__":
     pixels = im.load()
     bbox = im.getbbox()
 
+    ridge_list = defaultdict(list)
+
     for shape_index in shape_list:
         shape = shape_list[shape_index]
-        shape.sort(key=lambda px_data: flood_map[px_data[0]])
+        shape.sort(key=lambda px_data: grassfire_map[px_data[0]])
         max_val = shape[-1]
-        max_depth = flood_map[max_val[0]]
+        max_depth = grassfire_map[max_val[0]]
 
         shape_color = pixels[max_val[0]]
         if shape_color[0] == 0 and shape_color[1] == 0 and shape_color[2] == 0:
             continue
 
-        shape_color = random.randint(0, 256)
+        shape_color = random.randint(0, 56)
         color_idx = random.randint(0, 2)
         color_arr = [0, 0, 0]
         color_arr[color_idx] = shape_color
@@ -223,15 +222,15 @@ if __name__ == "__main__":
 
         for px in reversed(shape):
             pos = px[0]
-            px_depth = flood_map[pos]
+            px_depth = grassfire_map[pos]
 
             x = pos[0]
             y = pos[1]
-            left_depth = flood_map[(x-1, y)]
-            right_depth = flood_map[(x+1, y)]
+            left_depth = grassfire_map[(x-1, y)]
+            right_depth = grassfire_map[(x+1, y)]
 
-            top_depth = flood_map[(x, y-1)]
-            bot_depth = flood_map[(x, y+1)]
+            top_depth = grassfire_map[(x, y-1)]
+            bot_depth = grassfire_map[(x, y+1)]
 
             if not left_depth or not right_depth or not top_depth or not bot_depth:
                 continue
@@ -240,12 +239,54 @@ if __name__ == "__main__":
                 continue
 
             if abs(left_depth - right_depth) == 0 and abs(top_depth - bot_depth) == 0:
-                pixels[pos] = tuple(color_arr)
+                color_copy = list(color_arr)
+                color_copy[color_idx] += px_depth * 5
+                pixels[pos] = tuple(color_copy)
 
             if abs(left_depth - right_depth) == 1 and abs(top_depth - bot_depth) == 1:
-                pixels[pos] = tuple(color_arr)
+                color_copy = list(color_arr)
+                color_copy[color_idx] += px_depth * 5
+                pixels[pos] = tuple(color_copy)
+
+            ridge_list[shape_index].append(pos)
 
     im.save(FILE + ".red.png")
+    return ridge_list
+
+
+if __name__ == "__main__":
+    shape_map = shape_separate(im.copy())
+    grassfire_map = grassfire_fill(im.copy())
+    ridge_map = find_ridges(im.copy())
+
+
+    
+    for shape in ridge_map:
+        # TODO: need to join all the points?
+        # calculate distance from every pixel to each other...
+        pixels = im.load()
+        width, height = im.size
+        for px in ridge_map[shape]:
+            neighbors = (
+                (px[0] + 0, px[1] + 1),
+                (px[0] + 1, px[1] + 0),
+
+                (px[0] - 0, px[1] - 1),
+                (px[0] - 1, px[1] - 0),
+            )
+
+            for neighbor in neighbors:
+                if neighbor[0] < 0 or neighbor[1] < 0:
+                    continue
+
+                if neighbor[0] >= width or neighbor[1] >= height:
+                    continue
+
+                pixels[neighbor] = pixels[px]
+
+            
+            
+            
 
 
 
