@@ -7,6 +7,9 @@ import random
 import math
 import sys
 
+from sklearn.neighbors import KNeighborsRegressor
+import numpy as np
+
 FILE="shapes.png"
 #FILE="qIrIf0G.png"
 if len(sys.argv) > 1:
@@ -284,21 +287,14 @@ def find_ridges(im):
             if px_depth < MIN_DIST:
                 continue
 
-            is_ridge = False
+            x_delta = abs(left_depth - right_depth)
+            y_delta = abs(top_depth - bot_depth)
 
-            if abs(left_depth - right_depth) == 0 and abs(top_depth - bot_depth) == 0:
+            if x_delta <= 1 and y_delta <= 1:
                 color_copy = list(color_arr)
                 color_copy[color_idx] += px_depth * 5
                 pixels[pos] = tuple(color_copy)
-                is_ridge = True
 
-            if abs(left_depth - right_depth) == 1 and abs(top_depth - bot_depth) == 1:
-                color_copy = list(color_arr)
-                color_copy[color_idx] += px_depth * 5
-                pixels[pos] = tuple(color_copy)
-                is_ridge = True
-
-            if is_ridge:
                 ridge_list[shape_index].append(pos)
 
     im.save(FILE + ".red.png")
@@ -354,7 +350,4 @@ if __name__ == "__main__":
     shape_map = shape_separate(im.copy())
     grassfire_map = grassfire_fill(im.copy())
     ridge_map = find_ridges(im.copy())
-
-
-   
     connect_lines(im.copy(), ridge_map)
