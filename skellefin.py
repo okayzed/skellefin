@@ -5,9 +5,13 @@ from PIL import ImageFilter
 from collections import defaultdict
 import random
 import math
+import sys
 
 FILE="shapes.png"
 #FILE="qIrIf0G.png"
+if len(sys.argv) > 1:
+    FILE=sys.argv[1]
+
 MIN_DIST=5
 im = Image.open(FILE)
 
@@ -79,7 +83,49 @@ def shape_separate(image):
 
 
 
+def shape_fill(image, included_pixels):
+    visited = defaultdict(bool)
+    distances = defaultdict(lambda: defaultdict(int))
+    min_distances = defaultdict(int)
+    min_neighbors = {}
 
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(image)
+
+    # Find out all pixel distances to each other...
+
+    # DRAW LINES BETWEEN ALL CLOSEST PIXELS
+
+    included_pixels.sort(key=lambda p: p[1])
+
+    min_used = defaultdict(int)
+    for i in xrange(len(included_pixels)):
+        px1 = included_pixels[i]
+        min_distances[px1] = sys.maxint
+        for j in xrange(0, len(included_pixels)):
+            px2 = included_pixels[j]
+
+            if px2 == px1:
+                continue
+
+            distances[px1][px2] = math.sqrt((px1[0] - px2[0]) ** 2 + (px1[1] - px2[1])**2)
+            if min_distances[px1] > distances[px1][px2] and min_used[px2] < 2:
+                min_distances[px1] = distances[px1][px2]
+
+                if px1 in min_neighbors:
+                    min_used[min_neighbors[px1]] -= 1
+
+                min_neighbors[px1] = px2
+                min_used[px2] += 1
+
+
+
+    for px in included_pixels:
+        if px in min_neighbors:
+            draw.line([px, min_neighbors[px]], fill=(128, 128, 128), width=1)
+
+    
+    
 def grassfire_fill(image):
     to_visit = []
     visited = defaultdict(int)
@@ -238,34 +284,42 @@ def find_ridges(im):
             if px_depth < MIN_DIST:
                 continue
 
+            is_ridge = False
+
             if abs(left_depth - right_depth) == 0 and abs(top_depth - bot_depth) == 0:
                 color_copy = list(color_arr)
                 color_copy[color_idx] += px_depth * 5
                 pixels[pos] = tuple(color_copy)
+                is_ridge = True
 
             if abs(left_depth - right_depth) == 1 and abs(top_depth - bot_depth) == 1:
                 color_copy = list(color_arr)
                 color_copy[color_idx] += px_depth * 5
                 pixels[pos] = tuple(color_copy)
+                is_ridge = True
 
-            ridge_list[shape_index].append(pos)
+            if is_ridge:
+                ridge_list[shape_index].append(pos)
 
     im.save(FILE + ".red.png")
     return ridge_list
 
 
-if __name__ == "__main__":
-    shape_map = shape_separate(im.copy())
-    grassfire_map = grassfire_fill(im.copy())
-    ridge_map = find_ridges(im.copy())
-
-
-    
+def connect_lines(im, ridge_map):
     for shape in ridge_map:
         # TODO: need to join all the points?
         # calculate distance from every pixel to each other...
+        ridge_pixels = ridge_map[shape]
+        ridge_pixels.sort(key=lambda p: p[0])
+
+
         pixels = im.load()
         width, height = im.size
+        shape_color = (
+            random.randint(0, 128),
+            random.randint(0, 128),
+            random.randint(0, 128) )
+
         for px in ridge_map[shape]:
             neighbors = (
                 (px[0] + 0, px[1] + 1),
@@ -273,7 +327,10 @@ if __name__ == "__main__":
 
                 (px[0] - 0, px[1] - 1),
                 (px[0] - 1, px[1] - 0),
+
             )
+
+            pixels[px] = shape_color
 
             for neighbor in neighbors:
                 if neighbor[0] < 0 or neighbor[1] < 0:
@@ -282,12 +339,22 @@ if __name__ == "__main__":
                 if neighbor[0] >= width or neighbor[1] >= height:
                     continue
 
-                pixels[neighbor] = pixels[px]
+                pixels[neighbor] = shape_color
+        shape_fill(im, ridge_map[shape])
 
             
             
-            
+    im.save(FILE + ".blot.png")            
 
 
 
 
+
+if __name__ == "__main__":
+    shape_map = shape_separate(im.copy())
+    grassfire_map = grassfire_fill(im.copy())
+    ridge_map = find_ridges(im.copy())
+
+
+   
+    connect_lines(im.copy(), ridge_map)
