@@ -302,6 +302,12 @@ def find_ridges(im):
 
 
 def connect_lines(im, ridge_map):
+    width, height = im.size
+    pixels = im.load()
+    for x in xrange(width):
+        for y in xrange(height):
+            pixels[(x, y)] = (255, 255, 255)
+
     for shape in ridge_map:
         # TODO: need to join all the points?
         # calculate distance from every pixel to each other...
@@ -309,8 +315,6 @@ def connect_lines(im, ridge_map):
         ridge_pixels.sort(key=lambda p: p[0])
 
 
-        pixels = im.load()
-        width, height = im.size
         shape_color = (
             random.randint(0, 128),
             random.randint(0, 128),
