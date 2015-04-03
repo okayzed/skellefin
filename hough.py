@@ -6,6 +6,8 @@ import cv2.cv as cv
 import numpy as np
 import sys
 
+import math
+
 import random
 
 from PIL import Image, ImageFilter
@@ -48,6 +50,19 @@ if lines is not None:
   ]
 
   lines = lines[0]
+
+  print "JOINED INTO %s LINES" % len(lines)
+  for x1,y1,x2,y2 in lines:
+      color = (
+        random.randint(0, 255), 
+        random.randint(0, 255), 
+        random.randint(0, 255), 
+      )
+
+      cv2.line(blankimg,(x1,y1),(x2,y2),color,2)
+
+  cv2.imwrite(FILE + 'houghlines.jpg',blankimg)
+
 
   newlines = []
   for line in lines:
@@ -98,6 +113,7 @@ if lines is not None:
                   pass
 
               # need to check the distance of all possible pairs...
+              candidates = []
               for corner_pair in CORNERS:
                 if joined:
                     break
@@ -111,8 +127,10 @@ if lines is not None:
                 a_val = neighbor[a]
                 b_val = neighbor[b]
 
-                THRESH=5
-                if abs(x_val - a_val) > THRESH or abs(y_val - b_val) > THRESH:
+                THRESH=10
+                closeness = math.sqrt((x_val - a_val)**2 + (y_val - b_val)**2)
+
+                if closeness > THRESH:
                     continue
 
                 print "CORNERS MATCH", (x_val, y_val), (a_val, b_val), line, neighbor
@@ -122,33 +140,43 @@ if lines is not None:
 
                 print "SLOPES MATCH", slope1, slope2
 
-                # now, we take the two corners that we matched with and use
-                # their complements as the line segment...
-                new_x_val = line[(x+2) % 4]
-                new_y_val = line[(y+2) % 4]
+                candidates.append((closeness, [x, y, a, b]))
 
-                new_a_val = neighbor[(a + 2) % 4]
-                new_b_val = neighbor[(b + 2) % 4]
+              if not candidates:
+                continue
 
-                used[tuple(line)] = True
-                used[tuple(neighbor)] = True
-          
-                # THIS IS WHERE WE NEED TO DO IT RIGHT?
-                newline = [
-                    new_x_val,
-                    new_y_val,
-                    new_a_val,
-                    new_b_val
-                ]
+              candidates.sort()
+              closeness, (x, y, a, b) = candidates[-1]
 
-                if tuple(newline) != tuple(line) and tuple(newline) != tuple(neighbor):
-                    didjoin = True
-                    joined = True
 
-                    print "JOINING", line, neighbor
-                    print "NEWLINE IS", newline
 
-                    newlines.append(newline)
+              # now, we take the two corners that we matched with and use
+              # their complements as the line segment...
+              new_x_val = line[(x+2) % 4]
+              new_y_val = line[(y+2) % 4]
+
+              new_a_val = neighbor[(a + 2) % 4]
+              new_b_val = neighbor[(b + 2) % 4]
+
+              used[tuple(line)] = True
+              used[tuple(neighbor)] = True
+        
+              # THIS IS WHERE WE NEED TO DO IT RIGHT?
+              newline = [
+                  new_x_val,
+                  new_y_val,
+                  new_a_val,
+                  new_b_val
+              ]
+
+              if tuple(newline) != tuple(line) and tuple(newline) != tuple(neighbor):
+                  didjoin = True
+                  joined = True
+
+                  print "JOINING", line, neighbor
+                  print "NEWLINE IS", newline
+
+                  newlines.append(newline)
 
           if not joined:
             newlines.append(line)
@@ -183,5 +211,5 @@ if circles is not None:
       cv2.circle(blankimg, (x,y), r, color, 2)
 
 
-cv2.imwrite(FILE + 'houghlines3.jpg',blankimg)
+cv2.imwrite(FILE + 'joinedlines.jpg',blankimg)
 
