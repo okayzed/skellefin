@@ -7,9 +7,6 @@ import random
 import math
 import sys
 
-from sklearn.neighbors import KNeighborsRegressor
-import numpy as np
-
 FILE="shapes.png"
 #FILE="qIrIf0G.png"
 if len(sys.argv) > 1:
@@ -183,7 +180,7 @@ def grassfire_fill(image):
 
     # DEPTH STEPS = max_depth, so take 128 and divide by max_depth then multiply
     print 'MAX DEPTH', max_depth
-    color_step = max(256 / max_depth, 1)
+    color_step = max(256 / (max_depth or 1), 1)
     print "COLOR STEP", color_step
     for pos in visited:
         depth = visited[pos]

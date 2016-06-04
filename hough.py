@@ -38,6 +38,9 @@ circles = cv2.HoughCircles(gray,cv.CV_HOUGH_GRADIENT,1,50,
                             param1=50,param2=30,minRadius=0,maxRadius=0)
 
 
+def line_length(line):
+  return math.sqrt((line[0] - line[2])**2 + (line[1] + line[3])**2)
+
 if lines is not None:
   print "FOUND ", len(lines[0]), "LINES"
   unjoined_lines = []
@@ -63,19 +66,9 @@ if lines is not None:
 
   cv2.imwrite(FILE + 'houghlines.jpg',blankimg)
 
+  blankimg[:] = (255, 255, 255)
 
-  newlines = []
-  for line in lines:
-    if line[0] == line[2]:
-      if line[1] > line[3]:
-        newlines.append([line[2], line[3], line[0], line[1]])
-
-      else:
-        newlines.append(line)
-    else:
-      newlines.append(line)
-     
-  lines = newlines
+  lines = list(lines)
   while joined:
       didjoin = False
       print len(lines), "LINES ARE", lines
@@ -85,7 +78,7 @@ if lines is not None:
       from collections import defaultdict
       used = defaultdict(bool)
 
-      lines.sort(key=lambda x: abs(x[2] - x[0]) + abs(x[3] - x[1]))
+      lines.sort(key=lambda x: math.sqrt(abs(x[2] - x[0])**2 + abs(x[3] - x[1])**2))
       for line in lines:
           joined = False
           if used[tuple(line)]:
@@ -105,7 +98,7 @@ if lines is not None:
               try:
                   slope1 = float(line[3] - line[1]) / float(line[2] - line[0]) 
               except:
-                pass
+                  pass
 
               try:
                   slope2 = float(neighbor[3] - neighbor[1]) / float(neighbor[2] - neighbor[0]) 
@@ -127,7 +120,7 @@ if lines is not None:
                 a_val = neighbor[a]
                 b_val = neighbor[b]
 
-                THRESH=10
+                THRESH=30
                 closeness = math.sqrt((x_val - a_val)**2 + (y_val - b_val)**2)
 
                 if closeness > THRESH:
@@ -135,7 +128,7 @@ if lines is not None:
 
                 print "CORNERS MATCH", (x_val, y_val), (a_val, b_val), line, neighbor
 
-                if abs(slope1 - slope2) > 0.001:
+                if abs(slope1 - slope2) > 0.002:
                     continue
 
                 print "SLOPES MATCH", slope1, slope2
@@ -146,7 +139,7 @@ if lines is not None:
                 continue
 
               candidates.sort()
-              closeness, (x, y, a, b) = candidates[-1]
+              closeness, (x, y, a, b) = candidates[0]
 
 
 
@@ -158,9 +151,6 @@ if lines is not None:
               new_a_val = neighbor[(a + 2) % 4]
               new_b_val = neighbor[(b + 2) % 4]
 
-              used[tuple(line)] = True
-              used[tuple(neighbor)] = True
-        
               # THIS IS WHERE WE NEED TO DO IT RIGHT?
               newline = [
                   new_x_val,
@@ -170,15 +160,24 @@ if lines is not None:
               ]
 
               if tuple(newline) != tuple(line) and tuple(newline) != tuple(neighbor):
-                  didjoin = True
-                  joined = True
+                  print "LINE LENGTHS", line_length(line), line_length(neighbor), line_length(newline)
+                  if (line_length(line) > line_length(newline) or line_length(neighbor) > line_length(newline)):
+                    print "RESULTING LINE IS TOO SMALL", newline, "SKIPPING"
+                    continue
 
                   print "JOINING", line, neighbor
                   print "NEWLINE IS", newline
 
+                  used[tuple(line)] = True
+                  used[tuple(neighbor)] = True
+            
+                  didjoin = True
+                  joined = True
+
                   newlines.append(newline)
 
           if not joined:
+            print "COULDNT JOIN LINE, ADDING IN", line
             newlines.append(line)
 
 
@@ -192,9 +191,9 @@ if lines is not None:
   print "JOINED INTO %s LINES" % len(lines)
   for x1,y1,x2,y2 in lines:
       color = (
-        random.randint(0, 255), 
-        random.randint(0, 255), 
-        random.randint(0, 255), 
+        random.randint(0, 128), 
+        random.randint(0, 128), 
+        random.randint(0, 128), 
       )
 
       cv2.line(blankimg,(x1,y1),(x2,y2),color,2)
